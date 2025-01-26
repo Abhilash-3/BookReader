@@ -17,7 +17,7 @@ export const DocumentCard = ({ document, onPress }: DocumentCardProps) => {
       style={[styles.container, { backgroundColor: theme.colors.surface }]}
       onPress={onPress}
     >
-      <Icon name="description" size={40} color={theme.colors.primary} />
+      <Icon name="description" size={30} color={theme.colors.primary} />
       <View style={styles.details}>
         <Text style={[styles.title, { color: theme.colors.text }]} numberOfLines={1}>
           {document.name}
@@ -33,19 +33,19 @@ export const DocumentCard = ({ document, onPress }: DocumentCardProps) => {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    padding: 16,
-    marginHorizontal: 16,
-    marginVertical: 8,
+    padding: 12,
+    borderBottomWidth: 0.2,
+    borderBottomColor: '#000',
     borderRadius: 8,
     alignItems: 'center',
   },
   details: {
-    marginLeft: 16,
+    marginLeft: 10,
     flex: 1,
   },
   title: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: 'bold',
     marginBottom: 4,
   },
   date: {
