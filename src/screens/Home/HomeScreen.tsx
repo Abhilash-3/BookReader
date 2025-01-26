@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, FlatList, StyleSheet } from 'react-native';
-import DocumentPicker, { DocumentPickerResponse } from 'react-native-document-picker';
+import DocumentPicker from 'react-native-document-picker';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '../../hooks/useTheme';
@@ -19,14 +19,15 @@ export const HomeScreen = () => {
     try {
       const result = await DocumentPicker.pick({
         type: [DocumentPicker.types.pdf],
+        copyTo: 'cachesDirectory'
       });
       
       const newDocument: Document = {
         id: Date.now().toString(),
         name: result[0].name || 'Untitled',
-        uri: result[0].uri,
+        uri: result[0].fileCopyUri || result[0].uri,
         dateAdded: Date.now(),
-        size: result[0].size,
+        size: result[0].size || 0,
         type: result[0].type || 'application/pdf',
       };
 
@@ -82,3 +83,5 @@ const styles = StyleSheet.create({
     padding: 16,
   },
 });
+
+export default HomeScreen;
