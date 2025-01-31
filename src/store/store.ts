@@ -1,11 +1,11 @@
 import { configureStore } from '@reduxjs/toolkit';
-import themeReducer from './slices/themeSlice';
-import documentsReducer from './slices/documentSlice';
+import documentReducer from './slices/documentSlice';
+import folderReducer from './slices/folderSlice';
 
 export const store = configureStore({
   reducer: {
-    theme: themeReducer,
-    documents: documentsReducer,
+    documents: documentReducer,
+    folders: folderReducer,
   },
 });
 

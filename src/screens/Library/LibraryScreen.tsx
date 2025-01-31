@@ -14,7 +14,7 @@ import {Header} from '../../components/common/Header/Header';
 import {SelectableDocumentCard} from '../../components/DocumentCard/SelectableDocumentCard';
 import {FolderCard} from '../../components/FolderCard/FolderCard';
 import {useAppSelector, useAppDispatch} from '../../store/hooks';
-import {selectDocuments} from '../../store/slices/documentSlice';
+import {selectDocuments, removeDocument} from '../../store/slices/documentSlice';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../navigation/types';
@@ -22,6 +22,7 @@ import {Document} from '../../types/document';
 import {Folder} from '../../types/folder';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import {NewFolderCard} from '../../components/FolderCard/NewFolderCard';
+import { selectFolders, addFolder, updateFolder } from '../../store/slices/folderSlice';
 
 export const LibraryScreen = () => {
   const {theme} = useTheme();
@@ -35,21 +36,21 @@ export const LibraryScreen = () => {
   const [selectedDocuments, setSelectedDocuments] = useState<Set<string>>(
     new Set(),
   );
-  const [folders, setFolders] = useState<Folder[]>([]);
+  const folders = useAppSelector(selectFolders);
   const [isNewFolderModalVisible, setIsNewFolderModalVisible] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [isMoveModalVisible, setIsMoveModalVisible] = useState(false);
 
   const getCurrentFolderContent = () => {
     const currentFolderDocs = currentFolder
-      ? documents.filter(doc =>
-          folders.find(f => f.id === currentFolder)?.documents.includes(doc.id),
+      ? documents.filter((doc: { id: string; }) =>
+          folders.find((f: { id: string; }) => f.id === currentFolder)?.documents.includes(doc.id),
         )
       : documents.filter(
-          doc => !folders.some(f => f.documents.includes(doc.id)),
+        (doc: { id: string; }) => !folders.some((f: { documents: string | string[]; }) => f.documents.includes(doc.id)),
         );
     const currentFolderSubfolders = folders.filter(
-      f => f.parentId === currentFolder,
+      (f: { parentId: string | null; }) => f.parentId === currentFolder,
     );
     return {documents: currentFolderDocs, folders: currentFolderSubfolders};
   };
@@ -93,6 +94,15 @@ export const LibraryScreen = () => {
     setIsMoveModalVisible(true);
   };
 
+  const handleDeleteSelected = () => {
+    const selectedIds = Array.from(selectedDocuments);
+    selectedIds.forEach(id => {
+      dispatch(removeDocument(id));
+    });
+    setSelectedDocuments(new Set());
+    setIsSelectionMode(false);
+  };
+
   const createNewFolder = () => {
     if (newFolderName.trim()) {
       const newFolder: Folder = {
@@ -101,33 +111,27 @@ export const LibraryScreen = () => {
         parentId: currentFolder,
         documents: [],
       };
-      setFolders(prev => [...prev, newFolder]);
+      dispatch(addFolder(newFolder));
       setNewFolderName('');
       setIsNewFolderModalVisible(false);
     }
   };
 
   const moveDocumentsToFolder = (targetFolderId: string | null) => {
-    setFolders(prev =>
-      prev.map(folder => {
-        if (folder.id === targetFolderId) {
-          return {
-            ...folder,
-            documents: [...folder.documents, ...Array.from(selectedDocuments)],
-          };
-        }
-        return {
-          ...folder,
-          documents: folder.documents.filter(
-            docId => !selectedDocuments.has(docId),
-          ),
-        };
-      }),
-    );
+    folders.forEach((folder: Folder) => {
+      const updatedFolder: Folder = {
+        ...folder,
+        documents: folder.id === targetFolderId 
+          ? [...folder.documents, ...Array.from(selectedDocuments)]
+          : folder.documents.filter(docId => !selectedDocuments.has(docId))
+      };
+      dispatch(updateFolder(updatedFolder));
+    });
+    
     setSelectedDocuments(new Set());
     setIsSelectionMode(false);
     setIsMoveModalVisible(false);
-  };
+  };  
 
   return (
     <ScrollView style={styles.container}>
@@ -144,7 +148,7 @@ export const LibraryScreen = () => {
             <FlatList
               data={[
                 {id: 'new-folder', type: 'new-folder'},
-                ...getCurrentFolderContent().folders.map(f => ({
+                ...getCurrentFolderContent().folders.map((f: any) => ({
                   ...f,
                   type: 'folder' as const,
                 })),
@@ -167,7 +171,7 @@ export const LibraryScreen = () => {
             />
           </View>
 
-          {/* Move Button */}
+          {/* Action Buttons */}
           {isSelectionMode && (
             <View style={styles.actionButtons}>
               <TouchableOpacity
@@ -175,6 +179,13 @@ export const LibraryScreen = () => {
                 onPress={handleMoveToFolder}>
                 <View style={styles.moveButton}>
                   <Text style={styles.actionButtonText}>Move</Text>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={handleDeleteSelected}>
+                <View style={[styles.moveButton, styles.deleteButton]}>
+                  <Text style={styles.actionButtonText}>Delete</Text>
                 </View>
               </TouchableOpacity>
             </View>
@@ -271,9 +282,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   folderSection: {
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    paddingVertical: 4,
   },
   folderRow: {
     flex: 1,
@@ -282,15 +291,15 @@ const styles = StyleSheet.create({
   },
   actionButtons: {
     flexDirection: 'row',
-    padding: 8,
+    padding: 2,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
+    justifyContent: 'flex-end',
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 8,
-    marginRight: 16,
   },
   actionButtonText: {
     marginLeft: 4,
@@ -298,12 +307,15 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   moveButton: {
-    padding: '1%',
+    padding: 8,
     borderRadius: 4,
     borderWidth: 1,
     borderColor: 'grey',
     backgroundColor: '#eee',
-    marginLeft: '86%',
+  },
+  deleteButton: {
+    backgroundColor: '#fee',
+    borderColor: '#d66',
   },
   modalContainer: {
     flex: 1,
