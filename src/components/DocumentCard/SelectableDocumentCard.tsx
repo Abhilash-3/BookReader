@@ -64,7 +64,7 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: 'theme.colors.text',
     borderBottomWidth: 0.3,
-    borderBottomColor: '#000'
+    borderBottomColor: 'grey'
   },
   selectedContainer: {
     // backgroundColor: '#E3F2FD',

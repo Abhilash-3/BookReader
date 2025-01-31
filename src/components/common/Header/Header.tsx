@@ -1,15 +1,21 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useTheme } from '../../../hooks/useTheme';
-import { HeaderProps } from './types';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
-export const Header = ({
+export interface HeaderProps {
+  title: string;
+  showBack?: boolean;
+  onBackPress?: () => void;
+  rightComponent?: React.ReactNode;
+}
+
+export const Header: React.FC<HeaderProps> = ({
   title,
   showBack = false,
-  rightComponent,
   onBackPress,
-}: HeaderProps) => {
+  rightComponent
+}) => {
   const { theme } = useTheme();
 
   return (
@@ -35,17 +41,20 @@ const styles = StyleSheet.create({
   container: {
     height: 56,
     flexDirection: 'row',
-    alignItems: 'center' as const,
-    justifyContent: 'space-between' as const,
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
     backgroundColor: 'transparent',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
   },
   leftContainer: {
     flexDirection: 'row',
-    alignItems: 'center' as const,
+    alignItems: 'center',
   },
   backButton: {
     marginRight: 16,
+    padding: 4,
   },
   title: {
     fontSize: 20,
@@ -53,6 +62,6 @@ const styles = StyleSheet.create({
   },
   rightContainer: {
     flexDirection: 'row',
-    alignItems: 'center' as const,
+    alignItems: 'center',
   },
 });

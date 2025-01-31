@@ -1,23 +1,58 @@
 import React, {useState} from 'react';
-import {View, StyleSheet, Text} from 'react-native';
+import {
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  Text,
+  Modal,
+  TextInput,
+  FlatList,
+  ScrollView,
+} from 'react-native';
 import {useTheme} from '../../hooks/useTheme';
 import {Header} from '../../components/common/Header/Header';
 import {SelectableDocumentCard} from '../../components/DocumentCard/SelectableDocumentCard';
-import {useAppSelector} from '../../store/hooks';
+import {FolderCard} from '../../components/FolderCard/FolderCard';
+import {useAppSelector, useAppDispatch} from '../../store/hooks';
 import {selectDocuments} from '../../store/slices/documentSlice';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../navigation/types';
 import {Document} from '../../types/document';
-import {FlatList} from 'react-native';
+import {Folder} from '../../types/folder';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import {NewFolderCard} from '../../components/FolderCard/NewFolderCard';
 
 export const LibraryScreen = () => {
   const {theme} = useTheme();
+  const dispatch = useAppDispatch();
   const documents = useAppSelector(selectDocuments);
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
+  const [currentFolder, setCurrentFolder] = useState<string | null>(null);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
-  const [selectedDocuments, setSelectedDocuments] = useState<Set<string>>(new Set());
+  const [selectedDocuments, setSelectedDocuments] = useState<Set<string>>(
+    new Set(),
+  );
+  const [folders, setFolders] = useState<Folder[]>([]);
+  const [isNewFolderModalVisible, setIsNewFolderModalVisible] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [isMoveModalVisible, setIsMoveModalVisible] = useState(false);
+
+  const getCurrentFolderContent = () => {
+    const currentFolderDocs = currentFolder
+      ? documents.filter(doc =>
+          folders.find(f => f.id === currentFolder)?.documents.includes(doc.id),
+        )
+      : documents.filter(
+          doc => !folders.some(f => f.documents.includes(doc.id)),
+        );
+    const currentFolderSubfolders = folders.filter(
+      f => f.parentId === currentFolder,
+    );
+    return {documents: currentFolderDocs, folders: currentFolderSubfolders};
+  };
 
   const handleDocumentPress = (document: Document) => {
     if (isSelectionMode) {
@@ -50,35 +85,275 @@ export const LibraryScreen = () => {
     });
   };
 
-  const renderItem = ({item}: {item: Document}) => (
-    <SelectableDocumentCard
-      document={item}
-      isSelected={selectedDocuments.has(item.id)}
-      isSelectionMode={isSelectionMode}
-      onPress={() => handleDocumentPress(item)}
-      onLongPress={() => handleDocumentLongPress(item.id)}
-    />
-  );
+  const handleCreateFolder = () => {
+    setIsNewFolderModalVisible(true);
+  };
+
+  const handleMoveToFolder = () => {
+    setIsMoveModalVisible(true);
+  };
+
+  const createNewFolder = () => {
+    if (newFolderName.trim()) {
+      const newFolder: Folder = {
+        id: Date.now().toString(),
+        name: newFolderName.trim(),
+        parentId: currentFolder,
+        documents: [],
+      };
+      setFolders(prev => [...prev, newFolder]);
+      setNewFolderName('');
+      setIsNewFolderModalVisible(false);
+    }
+  };
+
+  const moveDocumentsToFolder = (targetFolderId: string | null) => {
+    setFolders(prev =>
+      prev.map(folder => {
+        if (folder.id === targetFolderId) {
+          return {
+            ...folder,
+            documents: [...folder.documents, ...Array.from(selectedDocuments)],
+          };
+        }
+        return {
+          ...folder,
+          documents: folder.documents.filter(
+            docId => !selectedDocuments.has(docId),
+          ),
+        };
+      }),
+    );
+    setSelectedDocuments(new Set());
+    setIsSelectionMode(false);
+    setIsMoveModalVisible(false);
+  };
 
   return (
-    <View style={styles.container}>
-      <Header title="Library" />
-      <Text style={styles.debug}>Selected: {selectedDocuments.size}</Text>
-       <FlatList
-        data={documents}
-        renderItem={renderItem}
-        keyExtractor={item => item.id}
-      />
-    </View>
+    <ScrollView style={styles.container}>
+      <View>
+        <Header
+          title={currentFolder ? 'Folder' : 'Library'}
+          showBack={!!currentFolder}
+          onBackPress={() => setCurrentFolder(null)}
+        />
+
+        <View style={styles.content}>
+          {/* Folders Grid Section */}
+          <View style={styles.folderSection}>
+            <FlatList
+              data={[
+                {id: 'new-folder', type: 'new-folder'},
+                ...getCurrentFolderContent().folders.map(f => ({
+                  ...f,
+                  type: 'folder' as const,
+                })),
+              ]}
+              renderItem={({item}) => {
+                if (item.type === 'new-folder') {
+                  return <NewFolderCard onPress={handleCreateFolder} />;
+                }
+                return (
+                  <FolderCard
+                    folder={item as Folder}
+                    onPress={() => setCurrentFolder(item.id)}
+                  />
+                );
+              }}
+              numColumns={3}
+              columnWrapperStyle={styles.folderRow}
+              keyExtractor={item => item.id}
+              scrollEnabled={false}
+            />
+          </View>
+
+          {/* Move Button */}
+          {isSelectionMode && (
+            <View style={styles.actionButtons}>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={handleMoveToFolder}>
+                <View style={styles.moveButton}>
+                  <Text style={styles.actionButtonText}>Move</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Documents List */}
+          <FlatList
+            data={getCurrentFolderContent().documents}
+            renderItem={({item}) => (
+              <SelectableDocumentCard
+                document={item}
+                isSelected={selectedDocuments.has(item.id)}
+                isSelectionMode={isSelectionMode}
+                onPress={() => handleDocumentPress(item)}
+                onLongPress={() => handleDocumentLongPress(item.id)}
+              />
+            )}
+            keyExtractor={item => item.id}
+          />
+        </View>
+
+        {/* Modals */}
+        <Modal
+          visible={isNewFolderModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setIsNewFolderModalVisible(false)}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Create New Folder</Text>
+              <TextInput
+                style={styles.input}
+                value={newFolderName}
+                onChangeText={setNewFolderName}
+                placeholder="Folder name"
+              />
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  onPress={() => setIsNewFolderModalVisible(false)}
+                  style={styles.modalButton}>
+                  <Text>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={createNewFolder}
+                  style={[styles.modalButton, styles.primaryButton]}>
+                  <Text style={styles.primaryButtonText}>Create</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        <Modal
+          visible={isMoveModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setIsMoveModalVisible(false)}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Move to Folder</Text>
+              <FlatList
+                data={folders}
+                renderItem={({item}) => (
+                  <TouchableOpacity
+                    style={styles.folderItem}
+                    onPress={() => moveDocumentsToFolder(item.id)}>
+                    <Icon name="folder" size={24} color="#FFC107" />
+                    <Text style={styles.folderItemText}>{item.name}</Text>
+                  </TouchableOpacity>
+                )}
+                ListHeaderComponent={() => (
+                  <TouchableOpacity
+                    style={styles.folderItem}
+                    onPress={() => moveDocumentsToFolder(null)}>
+                    <Icon name="folder" size={24} color="#FFC107" />
+                    <Text style={styles.folderItemText}>Root Folder</Text>
+                  </TouchableOpacity>
+                )}
+              />
+            </View>
+          </View>
+        </Modal>
+      </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#fff',
   },
-  debug: {
+  content: {
+    flex: 1,
+  },
+  folderSection: {
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  folderRow: {
+    flex: 1,
+    justifyContent: 'flex-start',
+    marginHorizontal: 8,
+  },
+  actionButtons: {
+    flexDirection: 'row',
     padding: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+    marginRight: 16,
+  },
+  actionButtonText: {
+    marginLeft: 4,
     fontSize: 14,
+    color: '#333',
+  },
+  moveButton: {
+    padding: '1%',
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: 'grey',
+    backgroundColor: '#eee',
+    marginLeft: '86%',
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 16,
+    width: '80%',
+    maxHeight: '80%',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 16,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 4,
+    padding: 8,
+    marginBottom: 16,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  modalButton: {
+    padding: 8,
+    marginLeft: 8,
+  },
+  primaryButton: {
+    backgroundColor: '#2196F3',
+    borderRadius: 4,
+  },
+  primaryButtonText: {
+    color: '#fff',
+  },
+  folderItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  folderItemText: {
+    marginLeft: 12,
+    fontSize: 16,
   },
 });
