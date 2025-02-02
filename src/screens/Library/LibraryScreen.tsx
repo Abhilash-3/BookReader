@@ -14,7 +14,10 @@ import {Header} from '../../components/common/Header/Header';
 import {SelectableDocumentCard} from '../../components/DocumentCard/SelectableDocumentCard';
 import {FolderCard} from '../../components/FolderCard/FolderCard';
 import {useAppSelector, useAppDispatch} from '../../store/hooks';
-import {selectDocuments, removeDocument} from '../../store/slices/documentSlice';
+import {
+  selectDocuments,
+  removeDocument,
+} from '../../store/slices/documentSlice';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../navigation/types';
@@ -22,8 +25,13 @@ import {Document} from '../../types/document';
 import {Folder} from '../../types/folder';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import {NewFolderCard} from '../../components/FolderCard/NewFolderCard';
-import { selectFolders, addFolder, updateFolder } from '../../store/slices/folderSlice';
+import {
+  selectFolders,
+  addFolder,
+  updateFolder,
+} from '../../store/slices/folderSlice';
 import FolderModal from '../../components/common/Modal/FolderModal';
+import { DocumentList } from '../../components/DocumentList/DocumentList';
 
 export const LibraryScreen = () => {
   const {theme} = useTheme();
@@ -44,14 +52,19 @@ export const LibraryScreen = () => {
 
   const getCurrentFolderContent = () => {
     const currentFolderDocs = currentFolder
-      ? documents.filter((doc: { id: string; }) =>
-          folders.find((f: { id: string; }) => f.id === currentFolder)?.documents.includes(doc.id),
+      ? documents.filter((doc: {id: string}) =>
+          folders
+            .find((f: {id: string}) => f.id === currentFolder)
+            ?.documents.includes(doc.id),
         )
       : documents.filter(
-        (doc: { id: string; }) => !folders.some((f: { documents: string | string[]; }) => f.documents.includes(doc.id)),
+          (doc: {id: string}) =>
+            !folders.some((f: {documents: string | string[]}) =>
+              f.documents.includes(doc.id),
+            ),
         );
     const currentFolderSubfolders = folders.filter(
-      (f: { parentId: string | null; }) => f.parentId === currentFolder,
+      (f: {parentId: string | null}) => f.parentId === currentFolder,
     );
     return {documents: currentFolderDocs, folders: currentFolderSubfolders};
   };
@@ -122,17 +135,69 @@ export const LibraryScreen = () => {
     folders.forEach((folder: Folder) => {
       const updatedFolder: Folder = {
         ...folder,
-        documents: folder.id === targetFolderId 
-          ? [...folder.documents, ...Array.from(selectedDocuments)]
-          : folder.documents.filter(docId => !selectedDocuments.has(docId))
+        documents:
+          folder.id === targetFolderId
+            ? [...folder.documents, ...Array.from(selectedDocuments)]
+            : folder.documents.filter(docId => !selectedDocuments.has(docId)),
       };
       dispatch(updateFolder(updatedFolder));
     });
-    
+
     setSelectedDocuments(new Set());
     setIsSelectionMode(false);
     setIsMoveModalVisible(false);
-  };  
+  };
+
+  return (
+    <ScrollView style={styles.container}>
+      <View>
+        <Header
+          title={currentFolder ? 'Folder' : 'Library'}
+          showBack={!!currentFolder}
+          onBackPress={() => setCurrentFolder(null)}
+        />
+
+        <View style={styles.content}>
+          {/* Folders Grid Section */}
+          <View style={styles.folderSection}>
+            <FlatList
+              data={[
+                {id: 'new-folder', type: 'new-folder'},
+                ...getCurrentFolderContent().folders.map(f => ({
+                  ...f,
+                  type: 'folder' as const,
+                })),
+              ]}
+              renderItem={({item}) => {
+                if (item.type === 'new-folder') {
+                  return <NewFolderCard onPress={handleCreateFolder} />;
+                }
+                return (
+                  <FolderCard
+                    folder={item as Folder}
+                    onPress={() => setCurrentFolder(item.id)}
+                  />
+                );
+              }}
+              numColumns={3}
+              columnWrapperStyle={styles.folderRow}
+              keyExtractor={item => item.id}
+              scrollEnabled={false}
+            />
+          </View>
+
+          {/* Documents List with Empty State */}
+          <View style={styles.documentSection}>
+            <DocumentList
+              documents={getCurrentFolderContent().documents}
+              onDocumentPress={handleDocumentPress}
+              screenType="library"
+            />
+          </View>
+        </View>
+      </View>
+    </ScrollView>
+  );
 
   return (
     <ScrollView style={styles.container}>
@@ -208,24 +273,24 @@ export const LibraryScreen = () => {
           />
         </View>
 
-      {/* New Folder Modal */}
-      <FolderModal
-        visible={isNewFolderModalVisible}
-        onClose={() => setIsNewFolderModalVisible(false)}
-        type="new"
-        folderName={newFolderName}
-        onChangeFolderName={setNewFolderName}
-        onCreateFolder={createNewFolder}
-      />
+        {/* New Folder Modal */}
+        <FolderModal
+          visible={isNewFolderModalVisible}
+          onClose={() => setIsNewFolderModalVisible(false)}
+          type="new"
+          folderName={newFolderName}
+          onChangeFolderName={setNewFolderName}
+          onCreateFolder={createNewFolder}
+        />
 
-      {/* Move to Folder Modal */}
-      <FolderModal
-        visible={isMoveModalVisible}
-        onClose={() => setIsMoveModalVisible(false)}
-        type="move"
-        folders={folders}
-        onSelectFolder={moveDocumentsToFolder}
-      />
+        {/* Move to Folder Modal */}
+        <FolderModal
+          visible={isMoveModalVisible}
+          onClose={() => setIsMoveModalVisible(false)}
+          type="move"
+          folders={folders}
+          onSelectFolder={moveDocumentsToFolder}
+        />
       </View>
     </ScrollView>
   );
@@ -325,5 +390,9 @@ const styles = StyleSheet.create({
   folderItemText: {
     marginLeft: 12,
     fontSize: 16,
+  },
+  documentSection: {
+    flex: 1,
+    minHeight: 400, 
   },
 });
