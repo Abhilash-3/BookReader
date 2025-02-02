@@ -1,29 +1,59 @@
 import React from 'react';
-import { View, TouchableOpacity, Text, StyleSheet, Modal } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet, Modal, TouchableWithoutFeedback } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
 interface OptionsMenuProps {
   visible: boolean;
   onClose: () => void;
+  onMove: () => void;
+  onFavorite: () => void;
   onDelete: () => void;
-  position: { x: number; y: number };
+  isFavorite?: boolean;
 }
 
-export const OptionsMenu = ({ visible, onClose, onDelete, position }: OptionsMenuProps) => {
+export const OptionsMenu = ({ 
+  visible, 
+  onClose, 
+  onMove,
+  onFavorite,
+  onDelete, 
+  isFavorite 
+}: OptionsMenuProps) => {
   return (
     <Modal
       transparent
       visible={visible}
+      animationType="slide"
       onRequestClose={onClose}
     >
-      <TouchableOpacity style={styles.overlay} onPress={onClose}>
-        <View style={[styles.menu, { top: position.y, left: position.x }]}>
-          <TouchableOpacity style={styles.menuItem} onPress={onDelete}>
-            <Ionicons name="trash-outline" size={20} color="#FF0000" />
-            <Text style={styles.deleteText}>Delete</Text>
-          </TouchableOpacity>
+      <TouchableWithoutFeedback onPress={onClose}>
+        <View style={styles.overlay}>
+          <TouchableWithoutFeedback>
+            <View style={styles.modalContent}>
+              <TouchableOpacity style={styles.menuItem} onPress={onMove}>
+                <Ionicons name="folder-outline" size={24} color="#000000" />
+                <Text style={styles.menuItemText}>Move to Folder</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={styles.menuItem} onPress={onFavorite}>
+                <Ionicons 
+                  name={isFavorite ? "star" : "star-outline"} 
+                  size={24} 
+                  color="#000000" 
+                />
+                <Text style={styles.menuItemText}>
+                  {isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.menuItem} onPress={onDelete}>
+                <Ionicons name="trash-outline" size={24} color="#FF0000" />
+                <Text style={styles.deleteText}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableWithoutFeedback>
         </View>
-      </TouchableOpacity>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 };
@@ -31,27 +61,30 @@ export const OptionsMenu = ({ visible, onClose, onDelete, position }: OptionsMen
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
-  menu: {
-    position: 'absolute',
-    backgroundColor: 'white',
-    borderRadius: 8,
-    padding: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  menuItemText: {
+    marginLeft: 12,
+    fontSize: 16,
+    color: '#000000',
   },
   deleteText: {
-    marginLeft: 8,
-    color: '#FF0000',
+    marginLeft: 12,
     fontSize: 16,
+    color: '#FF0000',
   },
 });

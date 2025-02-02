@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Folder } from '../../types/folder';
-import { OptionsMenu } from '../common/OptionsMenu/OptionsMenu';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useAppDispatch } from '../../store/hooks';
 import { removeFolder } from '../../store/slices/folderSlice';
+import ConfirmationModal from '../common/Modal/ConfirmationModal';
 
 interface FolderCardProps {
   folder: Folder;
@@ -13,40 +13,43 @@ interface FolderCardProps {
 
 export const FolderCard = ({ folder, onPress }: FolderCardProps) => {
   const dispatch = useAppDispatch();
-  const [menuVisible, setMenuVisible] = useState(false);
-  const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
+  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
 
   const handleOptionsPress = (event: any) => {
-    const { pageX, pageY } = event.nativeEvent;
-    setMenuPosition({ x: pageX - 100, y: pageY + 10 });
-    setMenuVisible(true);
+    event.stopPropagation();
+    setIsDeleteModalVisible(true);
   };
 
   const handleDelete = () => {
     dispatch(removeFolder(folder.id));
-    setMenuVisible(false);
+    setIsDeleteModalVisible(false);
   };
 
   return (
-    <TouchableOpacity style={styles.container} onPress={onPress}>
-      <View style={styles.content}>
-        <Text style={styles.name} numberOfLines={2}>
-          {folder.name}
-        </Text>
+    <>
+      <TouchableOpacity style={styles.container} onPress={onPress}>
         <TouchableOpacity 
           style={styles.optionsButton}
           onPress={handleOptionsPress}
         >
           <Ionicons name="ellipsis-vertical" size={20} color="#666" />
         </TouchableOpacity>
-      </View>
-      <OptionsMenu
-        visible={menuVisible}
-        onClose={() => setMenuVisible(false)}
-        onDelete={handleDelete}
-        position={menuPosition}
+        <View style={styles.content}>
+          <Ionicons name="folder" size={35} color="#B0B0B0" />
+          <Text style={styles.name} numberOfLines={2}>
+            {folder.name}
+          </Text>
+        </View>
+      </TouchableOpacity>
+
+      <ConfirmationModal
+        visible={isDeleteModalVisible}
+        onClose={() => setIsDeleteModalVisible(false)}
+        onConfirm={handleDelete}
+        heading={`Delete Folder`}
+        title={`Are you sure you want to delete "${folder.name}"?`}
       />
-    </TouchableOpacity>
+    </>
   );
 };
 

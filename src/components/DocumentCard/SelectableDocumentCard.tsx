@@ -1,18 +1,21 @@
-import React from 'react';
-import {View, StyleSheet, TouchableOpacity} from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
-import {Document} from '../../types/document';
-import {useTheme} from '../../hooks/useTheme';
-import {Text} from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Document } from '../../types/document';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { removeDocument, toggleFavorite } from '../../store/slices/documentSlice';
+import { selectFolders, updateFolder } from '../../store/slices/folderSlice';
+import { OptionsMenu } from '../common/OptionsMenu/OptionsMenu';
+import FolderModal from '../common/Modal/FolderModal';
 
 interface SelectableDocumentCardProps {
-    document: Document;
-    isSelected: boolean;
-    isSelectionMode: boolean;
-    onPress: () => void;
-    onLongPress: () => void;
-  }
-  
+  document: Document;
+  isSelected: boolean;
+  isSelectionMode: boolean;
+  onPress: () => void;
+  onLongPress: () => void;
+}
+
 export const SelectableDocumentCard = ({
   document,
   isSelected,
@@ -20,77 +23,106 @@ export const SelectableDocumentCard = ({
   onPress,
   onLongPress,
 }: SelectableDocumentCardProps) => {
-  const {theme} = useTheme();
+  const dispatch = useAppDispatch();
+  const folders = useAppSelector(selectFolders);
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [isMoveModalVisible, setIsMoveModalVisible] = useState(false);
+
+  const handleOptionsPress = (event: any) => {
+    event.stopPropagation();
+    setMenuVisible(true);
+  };
+
+  const handleDelete = () => {
+    dispatch(removeDocument(document.id));
+    setMenuVisible(false);
+  };
+
+  const handleFavorite = () => {
+    dispatch(toggleFavorite(document.id));
+    setMenuVisible(false);
+  };
+
+  const handleMove = () => {
+    setMenuVisible(false);
+    setIsMoveModalVisible(true);
+  };
+
+  const moveDocumentsToFolder = (targetFolderId: string | null) => {
+    folders.forEach(folder => {
+      const updatedFolder = {
+        ...folder,
+        documents: folder.id === targetFolderId 
+          ? [...folder.documents, document.id]
+          : folder.documents.filter(docId => docId !== document.id)
+      };
+      dispatch(updateFolder(updatedFolder));
+    });
+    setIsMoveModalVisible(false);
+  };
 
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      onLongPress={onLongPress}
-      delayLongPress={500}
-      style={[
-        styles.container,
-        isSelected && styles.selectedContainer,
-      ]}>
-      <View style={styles.content}>
-        <Icon 
-          name="picture-as-pdf" 
-          size={25} 
-          color={theme.colors.primary}
-          style={styles.icon}
-        />
-        <View style={styles.documentInfo}>
-          <Text style={styles.documentName} numberOfLines={1}>
+    <>
+      <TouchableOpacity
+        style={[styles.container, isSelected && styles.selected]}
+        onPress={onPress}
+        onLongPress={onLongPress}>
+        <View style={styles.content}>
+          <Ionicons name="document-text" size={24} color="#000000" style={styles.icon} />
+          <Text style={styles.title} numberOfLines={2}>
             {document.name}
           </Text>
-          <Text style={styles.documentMeta}>
-            {new Date(document.dateAdded).toLocaleDateString()}
-          </Text>
+          {!isSelectionMode && (
+            <TouchableOpacity style={styles.optionsButton} onPress={handleOptionsPress}>
+              <Ionicons name="ellipsis-vertical" size={20} color="#666" />
+            </TouchableOpacity>
+          )}
         </View>
-        {isSelectionMode && (
-          <View style={styles.checkboxContainer}>
-            <Icon
-              name={isSelected ? 'check-circle' : 'radio-button-unchecked'}
-              size={24}
-              color={isSelected ? theme.colors.primary : theme.colors.textSecondary}
-            />
-          </View>
-        )}
-      </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
+
+      <OptionsMenu
+        visible={menuVisible}
+        onClose={() => setMenuVisible(false)}
+        onMove={handleMove}
+        onFavorite={handleFavorite}
+        onDelete={handleDelete}
+        isFavorite={document.isFavorite}
+      />
+
+      <FolderModal
+        visible={isMoveModalVisible}
+        onClose={() => setIsMoveModalVisible(false)}
+        type="move"
+        folders={folders}
+        onSelectFolder={moveDocumentsToFolder}
+      />
+    </>
   );
 };
-
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: 'theme.colors.text',
-    borderBottomWidth: 0.3,
-    borderBottomColor: 'grey'
+    backgroundColor: '#fff',
+    padding: 16,
+    marginHorizontal: 16,
+    marginVertical: 8,
+    borderRadius: 8,
+    elevation: 2,
   },
-  selectedContainer: {
-    // backgroundColor: '#E3F2FD',
+  selected: {
+    backgroundColor: '#f0f0f0',
   },
   content: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
   },
   icon: {
-    marginRight: 16,
+    marginRight: 12,
   },
-  documentInfo: {
+  title: {
     flex: 1,
-    marginRight: 8,
+    fontSize: 16,
   },
-  documentName: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#000',
-  },
-  documentMeta: {
-    fontSize: 12,
-    color: '#666666',
-  },
-  checkboxContainer: {
-    marginLeft: 8,
+  optionsButton: {
+    padding: 8,
   },
 });

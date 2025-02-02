@@ -23,6 +23,7 @@ import {Folder} from '../../types/folder';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import {NewFolderCard} from '../../components/FolderCard/NewFolderCard';
 import { selectFolders, addFolder, updateFolder } from '../../store/slices/folderSlice';
+import FolderModal from '../../components/common/Modal/FolderModal';
 
 export const LibraryScreen = () => {
   const {theme} = useTheme();
@@ -207,67 +208,24 @@ export const LibraryScreen = () => {
           />
         </View>
 
-        {/* Modals */}
-        <Modal
-          visible={isNewFolderModalVisible}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setIsNewFolderModalVisible(false)}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Create New Folder</Text>
-              <TextInput
-                style={styles.input}
-                value={newFolderName}
-                onChangeText={setNewFolderName}
-                placeholder="Folder name"
-              />
-              <View style={styles.modalButtons}>
-                <TouchableOpacity
-                  onPress={() => setIsNewFolderModalVisible(false)}
-                  style={styles.modalButton}>
-                  <Text>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={createNewFolder}
-                  style={[styles.modalButton, styles.primaryButton]}>
-                  <Text style={styles.primaryButtonText}>Create</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
+      {/* New Folder Modal */}
+      <FolderModal
+        visible={isNewFolderModalVisible}
+        onClose={() => setIsNewFolderModalVisible(false)}
+        type="new"
+        folderName={newFolderName}
+        onChangeFolderName={setNewFolderName}
+        onCreateFolder={createNewFolder}
+      />
 
-        <Modal
-          visible={isMoveModalVisible}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setIsMoveModalVisible(false)}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Move to Folder</Text>
-              <FlatList
-                data={folders}
-                renderItem={({item}) => (
-                  <TouchableOpacity
-                    style={styles.folderItem}
-                    onPress={() => moveDocumentsToFolder(item.id)}>
-                    <Icon name="folder" size={24} color="#FFC107" />
-                    <Text style={styles.folderItemText}>{item.name}</Text>
-                  </TouchableOpacity>
-                )}
-                ListHeaderComponent={() => (
-                  <TouchableOpacity
-                    style={styles.folderItem}
-                    onPress={() => moveDocumentsToFolder(null)}>
-                    <Icon name="folder" size={24} color="#FFC107" />
-                    <Text style={styles.folderItemText}>Root Folder</Text>
-                  </TouchableOpacity>
-                )}
-              />
-            </View>
-          </View>
-        </Modal>
+      {/* Move to Folder Modal */}
+      <FolderModal
+        visible={isMoveModalVisible}
+        onClose={() => setIsMoveModalVisible(false)}
+        type="move"
+        folders={folders}
+        onSelectFolder={moveDocumentsToFolder}
+      />
       </View>
     </ScrollView>
   );

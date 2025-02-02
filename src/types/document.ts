@@ -5,5 +5,7 @@ export interface Document {
     dateAdded: number;
     size: number | undefined | null;
     type: string;
+    lastReadPage?: number;
+    isFavorite?: boolean;
   }
   
