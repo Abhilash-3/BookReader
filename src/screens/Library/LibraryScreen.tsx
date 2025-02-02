@@ -4,8 +4,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   Text,
-  Modal,
-  TextInput,
   FlatList,
   ScrollView,
 } from 'react-native';
@@ -14,24 +12,16 @@ import {Header} from '../../components/common/Header/Header';
 import {SelectableDocumentCard} from '../../components/DocumentCard/SelectableDocumentCard';
 import {FolderCard} from '../../components/FolderCard/FolderCard';
 import {useAppSelector, useAppDispatch} from '../../store/hooks';
-import {
-  selectDocuments,
-  removeDocument,
-} from '../../store/slices/documentSlice';
+import {selectDocuments, removeDocument} from '../../store/slices/documentSlice';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../navigation/types';
 import {Document} from '../../types/document';
 import {Folder} from '../../types/folder';
-import Icon from 'react-native-vector-icons/MaterialIcons';
 import {NewFolderCard} from '../../components/FolderCard/NewFolderCard';
-import {
-  selectFolders,
-  addFolder,
-  updateFolder,
-} from '../../store/slices/folderSlice';
+import { selectFolders, addFolder, updateFolder } from '../../store/slices/folderSlice';
 import FolderModal from '../../components/common/Modal/FolderModal';
-import { DocumentList } from '../../components/DocumentList/DocumentList';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 export const LibraryScreen = () => {
   const {theme} = useTheme();
@@ -52,19 +42,14 @@ export const LibraryScreen = () => {
 
   const getCurrentFolderContent = () => {
     const currentFolderDocs = currentFolder
-      ? documents.filter((doc: {id: string}) =>
-          folders
-            .find((f: {id: string}) => f.id === currentFolder)
-            ?.documents.includes(doc.id),
+      ? documents.filter((doc: { id: string; }) =>
+          folders.find((f: { id: string; }) => f.id === currentFolder)?.documents.includes(doc.id),
         )
       : documents.filter(
-          (doc: {id: string}) =>
-            !folders.some((f: {documents: string | string[]}) =>
-              f.documents.includes(doc.id),
-            ),
+        (doc: { id: string; }) => !folders.some((f: { documents: string | string[]; }) => f.documents.includes(doc.id)),
         );
     const currentFolderSubfolders = folders.filter(
-      (f: {parentId: string | null}) => f.parentId === currentFolder,
+      (f: { parentId: string | null; }) => f.parentId === currentFolder,
     );
     return {documents: currentFolderDocs, folders: currentFolderSubfolders};
   };
@@ -135,18 +120,19 @@ export const LibraryScreen = () => {
     folders.forEach((folder: Folder) => {
       const updatedFolder: Folder = {
         ...folder,
-        documents:
-          folder.id === targetFolderId
-            ? [...folder.documents, ...Array.from(selectedDocuments)]
-            : folder.documents.filter(docId => !selectedDocuments.has(docId)),
+        documents: folder.id === targetFolderId 
+          ? [...folder.documents, ...Array.from(selectedDocuments)]
+          : folder.documents.filter(docId => !selectedDocuments.has(docId))
       };
       dispatch(updateFolder(updatedFolder));
     });
-
+    
     setSelectedDocuments(new Set());
     setIsSelectionMode(false);
     setIsMoveModalVisible(false);
-  };
+  };  
+
+  const currentContent = getCurrentFolderContent();
 
   return (
     <ScrollView style={styles.container}>
@@ -163,58 +149,7 @@ export const LibraryScreen = () => {
             <FlatList
               data={[
                 {id: 'new-folder', type: 'new-folder'},
-                ...getCurrentFolderContent().folders.map(f => ({
-                  ...f,
-                  type: 'folder' as const,
-                })),
-              ]}
-              renderItem={({item}) => {
-                if (item.type === 'new-folder') {
-                  return <NewFolderCard onPress={handleCreateFolder} />;
-                }
-                return (
-                  <FolderCard
-                    folder={item as Folder}
-                    onPress={() => setCurrentFolder(item.id)}
-                  />
-                );
-              }}
-              numColumns={3}
-              columnWrapperStyle={styles.folderRow}
-              keyExtractor={item => item.id}
-              scrollEnabled={false}
-            />
-          </View>
-
-          {/* Documents List with Empty State */}
-          <View style={styles.documentSection}>
-            <DocumentList
-              documents={getCurrentFolderContent().documents}
-              onDocumentPress={handleDocumentPress}
-              screenType="library"
-            />
-          </View>
-        </View>
-      </View>
-    </ScrollView>
-  );
-
-  return (
-    <ScrollView style={styles.container}>
-      <View>
-        <Header
-          title={currentFolder ? 'Folder' : 'Library'}
-          showBack={!!currentFolder}
-          onBackPress={() => setCurrentFolder(null)}
-        />
-
-        <View style={styles.content}>
-          {/* Folders Grid Section */}
-          <View style={styles.folderSection}>
-            <FlatList
-              data={[
-                {id: 'new-folder', type: 'new-folder'},
-                ...getCurrentFolderContent().folders.map((f: any) => ({
+                ...currentContent.folders.map((f: any) => ({
                   ...f,
                   type: 'folder' as const,
                 })),
@@ -257,23 +192,32 @@ export const LibraryScreen = () => {
             </View>
           )}
 
-          {/* Documents List */}
-          <FlatList
-            data={getCurrentFolderContent().documents}
-            renderItem={({item}) => (
-              <SelectableDocumentCard
-                document={item}
-                isSelected={selectedDocuments.has(item.id)}
-                isSelectionMode={isSelectionMode}
-                onPress={() => handleDocumentPress(item)}
-                onLongPress={() => handleDocumentLongPress(item.id)}
-              />
-            )}
-            keyExtractor={item => item.id}
-          />
+          {/* Documents List with Empty State */}
+          {currentContent.documents.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="document-text-outline" size={50} color="#ccc" />
+              <Text style={styles.emptyText}>
+                No documents in this folder. Move documents here to organize them.
+              </Text>
+            </View>
+          ) : (
+            <FlatList
+              data={currentContent.documents}
+              renderItem={({item}) => (
+                <SelectableDocumentCard
+                  document={item}
+                  isSelected={selectedDocuments.has(item.id)}
+                  isSelectionMode={isSelectionMode}
+                  onPress={() => handleDocumentPress(item)}
+                  onLongPress={() => handleDocumentLongPress(item.id)}
+                />
+              )}
+              keyExtractor={item => item.id}
+            />
+          )}
         </View>
 
-        {/* New Folder Modal */}
+        {/* Modals */}
         <FolderModal
           visible={isNewFolderModalVisible}
           onClose={() => setIsNewFolderModalVisible(false)}
@@ -283,7 +227,6 @@ export const LibraryScreen = () => {
           onCreateFolder={createNewFolder}
         />
 
-        {/* Move to Folder Modal */}
         <FolderModal
           visible={isMoveModalVisible}
           onClose={() => setIsMoveModalVisible(false)}
@@ -340,59 +283,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#fee',
     borderColor: '#d66',
   },
-  modalContainer: {
+  emptyContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
+    marginTop: 150,
   },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 16,
-    width: '80%',
-    maxHeight: '80%',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 16,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 4,
-    padding: 8,
-    marginBottom: 16,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-  },
-  modalButton: {
-    padding: 8,
-    marginLeft: 8,
-  },
-  primaryButton: {
-    backgroundColor: '#2196F3',
-    borderRadius: 4,
-  },
-  primaryButtonText: {
-    color: '#fff',
-  },
-  folderItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  folderItemText: {
-    marginLeft: 12,
+  emptyText: {
+    marginTop: 16,
     fontSize: 16,
-  },
-  documentSection: {
-    flex: 1,
-    minHeight: 400, 
+    color: '#666',
+    textAlign: 'center',
   },
 });
